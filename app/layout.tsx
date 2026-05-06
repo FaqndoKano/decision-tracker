@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Geist } from 'next/font/google'
 import Link from 'next/link'
+import AuthButton from './components/AuthButton'
+import ReminderBanner from '@/app/components/ReminderBanner'
 import './globals.css'
 
 const geist = Geist({
@@ -30,21 +32,33 @@ export default function RootLayout({
             <nav className="flex items-center gap-1">
               <Link
                 href="/"
-                className="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
+                className="hidden md:block px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
               >
                 Feed
               </Link>
               <Link
                 href="/reviews"
-                className="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
+                className="hidden md:block px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
               >
                 Reviews
               </Link>
               <Link
                 href="/learning"
-                className="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
+                className="hidden md:block px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
               >
                 Learnings
+              </Link>
+              <Link
+                href="/playbook"
+                className="hidden md:block px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
+              >
+                Playbook
+              </Link>
+              <Link
+                href="/import"
+                className="hidden md:block px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
+              >
+                Import
               </Link>
               <Link
                 href="/new"
@@ -52,12 +66,14 @@ export default function RootLayout({
               >
                 + New
               </Link>
+              <AuthButton />
             </nav>
           </div>
         </header>
 
         {/* Page Content */}
         <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
+          <ReminderBanner />
           {children}
         </main>
       </body>

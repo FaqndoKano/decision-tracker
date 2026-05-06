@@ -15,6 +15,7 @@ interface FormData {
   campaign: string
   metric_before: string
   expected_outcome: string
+  review_date: string
 }
 
 const PLATFORMS: Platform[] = ['Meta', 'Google', 'Both']
@@ -67,6 +68,25 @@ const CATEGORY_TEMPLATES: Record<Category, { summary: string; why: string; actio
   },
 }
 
+function getDefaultReviewDate(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 7)
+  return d.toISOString().split('T')[0]
+}
+
+function buildGCalUrl(summary: string, reviewDate: string): string {
+  if (!reviewDate) return ''
+  // Format: YYYYMMDDTHHMMSS (no dashes/colons)
+  const dateStr = reviewDate.replace(/-/g, '')
+  const start = `${dateStr}T090000` // 9:00am
+  const end = `${dateStr}T091000`   // 9:10am (10 min block)
+
+  const title = encodeURIComponent(`Review decision: ${summary || 'Paid media decision'}`)
+  const details = encodeURIComponent('Review whether this paid media decision worked or not. Log the result in Decision Tracker.')
+
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}`
+}
+
 const EMPTY_FORM: FormData = {
   platform: '',
   country: '',
@@ -77,6 +97,7 @@ const EMPTY_FORM: FormData = {
   campaign: '',
   metric_before: '',
   expected_outcome: '',
+  review_date: getDefaultReviewDate(),
 }
 
 export default function NewDecision() {
@@ -121,9 +142,6 @@ export default function NewDecision() {
     try {
       setLoading(true)
 
-      const reviewDate = new Date()
-      reviewDate.setDate(reviewDate.getDate() + 7)
-
       const payload = {
         date: new Date().toISOString().split('T')[0],
         platform: form.platform,
@@ -135,7 +153,7 @@ export default function NewDecision() {
         campaign: form.campaign.trim() || null,
         metric_before: form.metric_before.trim() || null,
         expected_outcome: form.expected_outcome.trim() || null,
-        review_date: reviewDate.toISOString().split('T')[0],
+        review_date: form.review_date || null,
         playbook_worthy: false,
       }
 
@@ -175,7 +193,7 @@ export default function NewDecision() {
 
       <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-6 space-y-5">
         {/* Platform / Country / Category */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <div>
             <label htmlFor="platform" className={labelClass}>
               Platform <span className="text-red-500">*</span>
@@ -262,7 +280,7 @@ export default function NewDecision() {
             placeholder="What triggered this decision?"
             rows={3}
             required
-            className={inputClass}
+            className={`${inputClass} min-h-[100px]`}
           />
         </div>
 
@@ -279,7 +297,7 @@ export default function NewDecision() {
             placeholder="What was actually done?"
             rows={3}
             required
-            className={inputClass}
+            className={`${inputClass} min-h-[100px]`}
           />
         </div>
 
@@ -294,6 +312,32 @@ export default function NewDecision() {
 
         {showOptional && (
           <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div>
+              <label htmlFor="review_date" className={labelClass}>
+                Review Date <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <div className="flex items-center gap-3 flex-wrap">
+                <input
+                  type="date"
+                  id="review_date"
+                  name="review_date"
+                  value={form.review_date}
+                  onChange={handleChange}
+                  className={inputClass}
+                  style={{ maxWidth: '200px' }}
+                />
+                {form.review_date && (
+                  <a
+                    href={buildGCalUrl(form.summary, form.review_date)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    📅 Add to Google Calendar
+                  </a>
+                )}
+              </div>
+            </div>
             <div>
               <label htmlFor="campaign" className={labelClass}>
                 Campaign <span className="text-gray-400 font-normal">(optional)</span>
@@ -347,17 +391,17 @@ export default function NewDecision() {
         )}
 
         {/* Actions */}
-        <div className="flex gap-3 pt-2">
+        <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 px-4 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            className="w-full sm:flex-1 px-4 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
             {loading ? 'Saving…' : 'Save Decision'}
           </button>
           <Link
             href="/"
-            className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition text-center text-sm"
+            className="w-full sm:flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition text-center text-sm"
           >
             Cancel
           </Link>

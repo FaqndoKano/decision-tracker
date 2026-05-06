@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDecisionById, updateDecision } from '@/lib/db'
+import { getDecisionById, updateDecision, pool } from '@/lib/db'
 import { Decision } from '@/types/decision'
 
 interface RouteParams {
@@ -74,6 +74,21 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(updated, { status: 200 })
   } catch (error) {
     console.error('PUT /api/decisions/[id] error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params
+    const existing = await getDecisionById(id)
+    if (!existing) {
+      return NextResponse.json({ error: 'Decision not found' }, { status: 404 })
+    }
+    await pool.query('DELETE FROM decisions WHERE id = $1', [id])
+    return NextResponse.json({ ok: true }, { status: 200 })
+  } catch (error) {
+    console.error('DELETE /api/decisions/[id] error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

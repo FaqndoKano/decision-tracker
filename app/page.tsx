@@ -70,6 +70,7 @@ export default function Home() {
   const [filterCategory, setFilterCategory] = useState<Category | 'All'>('All')
   const [filterStatus, setFilterStatus] = useState<Status | 'All'>('All')
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc')
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Load all decisions once on mount
   useEffect(() => {
@@ -102,11 +103,26 @@ export default function Home() {
     return true
   })
 
-  const sorted = [...decisions].sort((a, b) => {
+  const searched = decisions.filter(d => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      d.summary?.toLowerCase().includes(q) ||
+      d.why?.toLowerCase().includes(q) ||
+      d.action_taken?.toLowerCase().includes(q) ||
+      d.campaign?.toLowerCase().includes(q) ||
+      d.learning?.toLowerCase().includes(q) ||
+      d.result?.toLowerCase().includes(q)
+    )
+  })
+
+  const sorted = [...searched].sort((a, b) => {
     return sortOrder === 'desc'
       ? b.date.localeCompare(a.date)
       : a.date.localeCompare(b.date)
   })
+
+  const isFiltered = filterPlatform !== 'All' || filterCountry !== 'All' || filterCategory !== 'All' || filterStatus !== 'All' || searchQuery.trim() !== ''
 
   const handleExport = async () => {
     try {
@@ -147,6 +163,26 @@ export default function Home() {
             + New Decision
           </Link>
         </div>
+      </div>
+
+      {/* Search */}
+      <div>
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search decisions..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <span className="absolute left-3 top-3.5 text-gray-400 text-sm">🔍</span>
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 text-lg">×</button>
+          )}
+        </div>
+        {isFiltered && !loading && (
+          <p className="mt-2 text-xs text-gray-400">{sorted.length} decision{sorted.length !== 1 ? 's' : ''}</p>
+        )}
       </div>
 
       {/* Filters */}

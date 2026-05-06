@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Decision, Verdict, Status } from '@/types/decision'
 
@@ -54,6 +54,7 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 
 export default function DecisionDetail() {
   const params = useParams()
+  const router = useRouter()
   const id = params.id as string
 
   const [decision, setDecision] = useState<Decision | null>(null)
@@ -61,6 +62,8 @@ export default function DecisionDetail() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [reviewError, setReviewError] = useState<string | null>(null)
+  const [authenticated, setAuthenticated] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const [reviewForm, setReviewForm] = useState<ReviewForm>({
     verdict: '',
@@ -68,6 +71,29 @@ export default function DecisionDetail() {
     learning: '',
     playbook_worthy: false,
   })
+
+  useEffect(() => {
+    fetch('/api/auth/check')
+      .then((r) => r.json())
+      .then((data) => setAuthenticated(data.authenticated))
+      .catch(() => setAuthenticated(false))
+  }, [])
+
+  async function handleDelete() {
+    if (!window.confirm('Are you sure? This cannot be undone.')) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/decisions/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || `Failed to delete (${res.status})`)
+      }
+      router.push('/')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Delete failed. Please try again.')
+      setDeleting(false)
+    }
+  }
 
   useEffect(() => {
     if (!id) return
@@ -251,7 +277,7 @@ export default function DecisionDetail() {
                 onChange={handleReviewChange}
                 placeholder="What actually happened?"
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
               />
             </div>
 
@@ -267,7 +293,7 @@ export default function DecisionDetail() {
                 onChange={handleReviewChange}
                 placeholder="What did this teach us?"
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
               />
             </div>
 
@@ -345,6 +371,19 @@ export default function DecisionDetail() {
         <span>Updated: {formatDate(decision.updated_at)}</span>
         {decision.created_by && <span>By: {decision.created_by}</span>}
       </div>
+
+      {/* Delete — only visible when authenticated */}
+      {authenticated && (
+        <div className="pt-2 border-t border-gray-200">
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {deleting ? 'Deleting…' : 'Delete Decision'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -57,55 +57,57 @@ export default function LearningPage() {
 
       {!loading && decisions.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left px-4 py-3 font-semibold text-gray-600 w-24">Date</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600 w-20">Platform</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600 w-20">Country</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Decision</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Learning</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600 w-28">Verdict</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600 w-20">Playbook</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {decisions.map((d) => (
-                <tr key={d.id} className="hover:bg-gray-50 transition">
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{d.date}</td>
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-medium">{d.platform}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs font-medium">{d.country}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link href={`/decisions/${d.id}`} className="font-medium text-gray-900 hover:text-blue-600 transition">
-                      {d.summary}
-                    </Link>
-                    {d.campaign && <p className="text-xs text-gray-400 mt-0.5">{d.campaign}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-gray-700">{d.learning}</td>
-                  <td className="px-4 py-3">
-                    {d.verdict ? (
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${getVerdictBadgeClass(d.verdict)}`}>
-                        {d.verdict}
-                      </span>
-                    ) : (
-                      <span className="text-gray-300 text-xs">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {d.playbook_worthy ? (
-                      <span className="text-green-600 font-bold text-base" title="Playbook worthy">✓</span>
-                    ) : (
-                      <span className="text-gray-300 text-xs">—</span>
-                    )}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600 w-24 hidden sm:table-cell">Date</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600 w-20 hidden md:table-cell">Platform</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600 w-20 hidden md:table-cell">Country</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Decision</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Learning</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600 w-28">Verdict</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600 w-20 hidden sm:table-cell">Playbook</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {decisions.map((d) => (
+                  <tr key={d.id} className="hover:bg-gray-50 transition">
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap hidden sm:table-cell">{d.date}</td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-medium">{d.platform}</span>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <span className="px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs font-medium">{d.country}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link href={`/decisions/${d.id}`} className="font-medium text-gray-900 hover:text-blue-600 transition">
+                        {d.summary}
+                      </Link>
+                      {d.campaign && <p className="text-xs text-gray-400 mt-0.5">{d.campaign}</p>}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">{d.learning}</td>
+                    <td className="px-4 py-3">
+                      {d.verdict ? (
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${getVerdictBadgeClass(d.verdict)}`}>
+                          {d.verdict}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-xs">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center hidden sm:table-cell">
+                      {d.playbook_worthy ? (
+                        <span className="text-green-600 font-bold text-base" title="Playbook worthy">✓</span>
+                      ) : (
+                        <span className="text-gray-300 text-xs">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
