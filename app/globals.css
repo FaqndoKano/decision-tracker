@@ -1,26 +1,48 @@
 @import "tailwindcss";
 
+/* ─── Brand palette ─────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brand:         #E080C0;
+  --brand-soft:    #E0A0C0;
+  --brand-hover:   #C060A0;
+  --surface:       #E0E0E0;
+  --ink:           #202020;
+  --ink-mid:       #404040;
+  --ink-secondary: #606060;
+  --ink-tertiary:  #808080;
+  --cyan-soft:     #C0E0E0;
+  --lavender:      #E0C0E0;
 }
 
+/* Override Tailwind blue → brand pink so every blue-* class becomes pink */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--surface);
+  --color-foreground: var(--ink);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* blue overrides → pink */
+  --color-blue-300: #E0C0D8;
+  --color-blue-400: var(--brand-soft);
+  --color-blue-500: var(--brand);
+  --color-blue-600: var(--brand);
+  --color-blue-700: var(--brand-hover);
+  --color-blue-800: #A04080;
+
+  /* gray scale aligned to palette */
+  --color-gray-50:  #ECECEC;
+  --color-gray-100: #E0E0E0;
+  --color-gray-200: #D0D0D0;
+  --color-gray-300: #B8B8B8;
+  --color-gray-400: var(--ink-tertiary);
+  --color-gray-500: var(--ink-secondary);
+  --color-gray-600: var(--ink-secondary);
+  --color-gray-700: var(--ink-mid);
+  --color-gray-800: var(--ink-mid);
+  --color-gray-900: var(--ink);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--surface);
+  color: var(--ink);
 }
