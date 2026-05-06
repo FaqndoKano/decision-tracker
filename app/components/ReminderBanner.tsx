@@ -17,7 +17,8 @@ function getReminderMessage(): string | null {
   if (totalMinutes >= afternoon.start && totalMinutes <= afternoon.end) {
     return '⏰ Afternoon check-in — time to log today\'s paid media decisions.'
   }
-  return null
+  // DEMO MODE: always show
+  return '📝 Morning check-in — what decisions did you make yesterday or this morning?'
 }
 
 function getTodayKey(suffix: string) {
