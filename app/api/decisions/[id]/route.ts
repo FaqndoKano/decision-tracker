@@ -43,6 +43,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       'summary',
       'why',
       'metric_before',
+      'metric_after',
       'action_taken',
       'expected_outcome',
       'review_date',
@@ -64,6 +65,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No valid fields provided for update' }, { status: 400 })
     }
+
+    // Append to edit history before updating
+    const historyEntry = {
+      timestamp: new Date().toISOString(),
+      previous: existing,
+    }
+    const currentHistory = JSON.parse((existing as any).edit_history || '[]')
+    currentHistory.push(historyEntry)
+    // Keep only last 10 edits
+    const trimmedHistory = currentHistory.slice(-10)
+    ;(updates as any).edit_history = JSON.stringify(trimmedHistory)
 
     const updated = await updateDecision(id, updates)
 

@@ -37,6 +37,12 @@ export default function RootLayout({
                 Feed
               </Link>
               <Link
+                href="/stats"
+                className="hidden md:block px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
+              >
+                Stats
+              </Link>
+              <Link
                 href="/reviews"
                 className="hidden md:block px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
               >

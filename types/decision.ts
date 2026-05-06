@@ -14,6 +14,7 @@ export interface Decision {
   summary: string
   why: string
   metric_before?: string
+  metric_after?: string
   action_taken: string
   expected_outcome?: string
   review_date?: string
@@ -29,6 +30,7 @@ export interface Decision {
   created_by: string
   created_at: string
   updated_at: string
+  edit_history?: string
 }
 
 export type DecisionInsert = Omit<Decision, 'id' | 'status' | 'created_by' | 'created_at' | 'updated_at'>

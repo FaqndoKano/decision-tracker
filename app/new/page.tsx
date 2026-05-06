@@ -163,6 +163,25 @@ export default function NewDecision() {
         body: JSON.stringify(payload),
       })
 
+      if (res.status === 409) {
+        const data = await res.json()
+        const confirmed = window.confirm(`⚠️ Possible duplicate detected!\n\n"${data.existing?.summary}" (${data.existing?.date})\n\nDo you still want to create this decision?`)
+        if (!confirmed) { setLoading(false); return }
+        // Retry with force flag
+        const retryRes = await fetch('/api/decisions?force=true', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (!retryRes.ok) {
+          const body = await retryRes.json().catch(() => ({}))
+          throw new Error(body.error || `Request failed: ${retryRes.status}`)
+        }
+        const created = await retryRes.json()
+        router.push(created?.id ? `/decisions/${created.id}` : '/')
+        return
+      }
+
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.error || `Request failed: ${res.status}`)

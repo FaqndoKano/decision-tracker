@@ -20,6 +20,7 @@ async function initSchema() {
         summary TEXT NOT NULL,
         why TEXT NOT NULL,
         metric_before TEXT,
+        metric_after TEXT,
         action_taken TEXT NOT NULL,
         expected_outcome TEXT,
         review_date TEXT,
@@ -32,6 +33,12 @@ async function initSchema() {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
+    `)
+    await client.query(`
+      ALTER TABLE decisions ADD COLUMN IF NOT EXISTS metric_after TEXT
+    `)
+    await client.query(`
+      ALTER TABLE decisions ADD COLUMN IF NOT EXISTS edit_history TEXT DEFAULT '[]'
     `)
   } finally {
     client.release()

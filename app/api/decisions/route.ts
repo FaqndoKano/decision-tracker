@@ -27,6 +27,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const force = searchParams.get('force') === 'true'
+
     const body = await request.json()
 
     const { platform, country, category, summary, why, action_taken } = body
@@ -39,6 +42,32 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       )
+    }
+
+    // Check for duplicates: same summary within last 14 days
+    if (!force) {
+      const allDecisions = await getAllDecisions()
+      const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      const recentSimilar = allDecisions.filter(d => {
+        if (d.date < twoWeeksAgo) return false
+        const existingSummary = d.summary.toLowerCase().replace(/\s+/g, ' ').trim()
+        const newSummary = summary.toLowerCase().replace(/\s+/g, ' ').trim()
+        // Check if summaries share more than 60% of words
+        const existingWords = new Set(existingSummary.split(' ').filter((w: string) => w.length > 3))
+        const newWords = newSummary.split(' ').filter((w: string) => w.length > 3)
+        if (newWords.length === 0) return false
+        const matches = newWords.filter((w: string) => existingWords.has(w)).length
+        return matches / newWords.length > 0.6
+      })
+
+      if (recentSimilar.length > 0) {
+        return NextResponse.json({
+          error: 'Possible duplicate',
+          duplicate: true,
+          existing: recentSimilar[0],
+          message: `Similar decision found: "${recentSimilar[0].summary}" (${recentSimilar[0].date})`,
+        }, { status: 409 })
+      }
     }
 
     const id = crypto.randomUUID()

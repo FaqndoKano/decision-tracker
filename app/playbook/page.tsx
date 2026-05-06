@@ -27,11 +27,43 @@ export default function PlaybookPage() {
     return acc
   }, {} as Record<string, Decision[]>)
 
+  const exportMarkdown = () => {
+    const lines: string[] = ['# EduSolium Paid Media Playbook', '', `Generated: ${new Date().toLocaleDateString()}`, '', '---', '']
+
+    Object.entries(grouped).forEach(([category, items]) => {
+      lines.push(`## ${category}`, '')
+      items.forEach((d, i) => {
+        lines.push(`### Rule ${i + 1}: ${d.learning}`)
+        lines.push(`- **Source:** ${d.summary}`)
+        lines.push(`- **Date:** ${d.date}`)
+        lines.push(`- **Platform:** ${d.platform} · **Country:** ${d.country}`)
+        lines.push(`- **Verdict:** ${d.verdict || 'N/A'}`)
+        if (d.result) lines.push(`- **Result:** ${d.result}`)
+        lines.push('')
+      })
+    })
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `playbook-${new Date().toISOString().split('T')[0]}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900">Playbook</h2>
-        <p className="text-sm text-gray-500 mt-1">Rules and learnings extracted from reviewed decisions</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Playbook</h2>
+          <p className="text-sm text-gray-500 mt-1">Rules and learnings extracted from reviewed decisions</p>
+        </div>
+        {decisions.length > 0 && (
+          <button onClick={exportMarkdown} className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition">
+            ↓ Export Markdown
+          </button>
+        )}
       </div>
 
       {loading && <div className="text-center py-12"><div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" /></div>}
