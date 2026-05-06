@@ -63,11 +63,33 @@ function toAdCostLang(country: string): string | null {
   return map[country] ?? null
 }
 
-// Map decision-tracker country code → crm.lang value
+// Map decision-tracker country code → detected_language value used in crm
 function toCrmLang(country: string): string | null {
   const map: Record<string, string> = { IT: 'it', ES: 'es', DE: 'de', FR: 'fr' }
   return map[country] ?? null
 }
+
+// Full detected_language CASE — mirrors Power BI logic exactly (from crm.md §4.1)
+const DETECTED_LANG_CASE = `
+  CASE WHEN lang = 'en' THEN
+    CASE
+      WHEN country IN ('Spain','Spagna','España','México','Mexico','Messico','Argentina','Colombia','Chile','Cile','Peru','Venezuela','Ecuador','Guatemala','Paraguay','El Salvador','Costa Rica','Panama','Uruguay','Dominican Republic','Puerto Rico','es') THEN 'es'
+      WHEN country IN ('Italy','Italia','it') THEN 'it'
+      WHEN country IN ('Alemania','Germany','Austria','Liechtenstein','Osterreich','österreich','de') THEN 'de'
+      WHEN country IN ('France','Francia','Belgium','Monaco','Luxembourg','fr') THEN 'fr'
+      WHEN country IN ('Portugal','Brazil','Brasil','Brasile','pt') THEN 'pt'
+      ELSE
+        CASE
+          WHEN phone LIKE '+34%' THEN 'es'
+          WHEN phone LIKE '+54%' THEN 'es'
+          WHEN phone LIKE '+39%' THEN 'it'
+          WHEN phone LIKE '+33%' THEN 'fr'
+          WHEN phone LIKE '+49%' THEN 'de'
+          ELSE 'it'
+        END
+    END
+  ELSE lang END
+`
 
 // utm_source values in CRM for each platform
 function crmSources(platform: 'Meta' | 'Google'): string[] {
@@ -109,7 +131,7 @@ async function getPeriodMetrics(
       AND otp_verification_code_verified = 1
       AND created_at >= ? AND created_at < ?
       AND utm_source IN (${utmPlaceholders})`
-  if (crmLang) { leadSql += ' AND lang = ?'; leadParams.push(crmLang) }
+  if (crmLang) { leadSql += ` AND (${DETECTED_LANG_CASE}) = ?`; leadParams.push(crmLang) }
 
   const [leadRows] = await db.execute<mysql.RowDataPacket[]>(leadSql, leadParams)
 
@@ -186,7 +208,7 @@ export async function getCampaignSnapshot(
       AND created_at >= ? AND created_at < ?
       AND utm_source IN (${utmPlaceholders})
       AND utm_campaign IS NOT NULL`
-  if (crmLang) { leadSql += ' AND lang = ?'; leadParams.push(crmLang) }
+  if (crmLang) { leadSql += ` AND (${DETECTED_LANG_CASE}) = ?`; leadParams.push(crmLang) }
   leadSql += ' GROUP BY campaign_name'
 
   const [leadRows] = await db.execute<mysql.RowDataPacket[]>(leadSql, leadParams)
