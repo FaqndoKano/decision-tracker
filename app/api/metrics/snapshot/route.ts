@@ -9,20 +9,27 @@ function addDays(dateStr: string, days: number): string {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const date     = searchParams.get('date')       // decision date
-  const platform = searchParams.get('platform') as 'Meta' | 'Google' | null
-  const country  = searchParams.get('country') ?? 'Global'
-  const window   = parseInt(searchParams.get('window') || '7')
+  const date          = searchParams.get('date')
+  const platform      = searchParams.get('platform') as 'Meta' | 'Google' | null
+  const country       = searchParams.get('country') ?? 'Global'
+  const windowDays    = parseInt(searchParams.get('window') || '7')
+  const dateFromParam = searchParams.get('date_from')
+  const dateToParam   = searchParams.get('date_to')
 
-  if (!date || !platform) {
-    return NextResponse.json({ error: 'date and platform are required' }, { status: 400 })
-  }
-  if (!['Meta', 'Google'].includes(platform)) {
+  if (!platform || !['Meta', 'Google'].includes(platform)) {
     return NextResponse.json({ error: 'platform must be Meta or Google' }, { status: 400 })
   }
 
-  const dateFrom = addDays(date, -window)
-  const dateTo   = date // exclusive
+  let dateFrom: string, dateTo: string
+  if (dateFromParam && dateToParam) {
+    dateFrom = dateFromParam
+    dateTo   = dateToParam
+  } else if (date) {
+    dateFrom = addDays(date, -windowDays)
+    dateTo   = date
+  } else {
+    return NextResponse.json({ error: 'Provide date or date_from + date_to' }, { status: 400 })
+  }
 
   try {
     const result = await getCampaignSnapshot(dateFrom, dateTo, platform, country)

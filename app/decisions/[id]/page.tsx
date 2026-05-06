@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Decision, Verdict, Status, Platform, Country, Category } from '@/types/decision'
-import type { CPLResult, SnapshotResult } from '@/lib/edusogno-db'
+import type { CPLResult, SnapshotResult, CampaignRow } from '@/lib/edusogno-db'
 
 const VERDICTS: Verdict[] = ['Worked', 'Did Not Work', 'Neutral', 'No Data']
 const PLATFORMS: Platform[] = ['Meta', 'Google', 'Both']
@@ -31,6 +31,12 @@ interface EditForm {
   expected_outcome: string
   review_date: string
   date: string
+}
+
+function addDaysClient(dateStr: string, days: number): string {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0]
 }
 
 function getStatusClass(status: Status) {
@@ -61,12 +67,156 @@ function formatDate(dateString?: string) {
   })
 }
 
+function formatShortDate(dateString?: string) {
+  if (!dateString) return ''
+  return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null
   return (
     <div>
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">{label}</p>
       <p className="text-sm text-gray-900 whitespace-pre-wrap">{value}</p>
+    </div>
+  )
+}
+
+// ─── Before/After comparison table ───────────────────────────────────────────
+
+function CplDelta({ before, after }: { before: number | null; after: number | null }) {
+  if (before === null || after === null) return <span className="text-gray-300">—</span>
+  const delta = Math.round((after - before) * 100) / 100
+  const pct   = Math.round(((after - before) / before) * 100)
+  const isGood = delta < 0
+  const cls = isGood ? 'text-green-600' : delta > 0 ? 'text-red-500' : 'text-gray-500'
+  return (
+    <span className={`font-semibold ${cls}`}>
+      {delta > 0 ? '+' : ''}{delta.toFixed(2)} <span className="text-xs font-normal">({pct > 0 ? '+' : ''}{pct}%)</span>
+    </span>
+  )
+}
+
+function ComparisonTable({
+  snapshot,
+  snapshotAfter,
+  showFunnel,
+}: {
+  snapshot: SnapshotResult
+  snapshotAfter: SnapshotResult
+  showFunnel: boolean
+}) {
+  const empty: CampaignRow = { name: '', spend: 0, leads: 0, cpl: null, mtg_scheduled: 0, mtg_done: 0, booking_rate: null, meeting_done_pct: null }
+
+  const allNames = Array.from(new Set([
+    ...snapshot.campaigns.map(c => c.name),
+    ...snapshotAfter.campaigns.map(c => c.name),
+  ]))
+
+  const rows = allNames.map(name => ({
+    name,
+    before: snapshot.campaigns.find(c => c.name === name) ?? null,
+    after:  snapshotAfter.campaigns.find(c => c.name === name) ?? null,
+  }))
+
+  const fmt = (n: number) => `€${n.toLocaleString('it-IT', { maximumFractionDigits: 0 })}`
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm min-w-[640px]">
+        <thead>
+          <tr>
+            <th className="text-left text-xs font-semibold text-gray-400 uppercase py-2 pr-3" rowSpan={2}>Campaign</th>
+            <th colSpan={showFunnel ? 5 : 3} className="text-center text-xs font-semibold text-blue-500 uppercase py-1 px-2 bg-blue-50 rounded-tl">
+              Before ({formatShortDate(snapshot.date_from)} → {formatShortDate(snapshot.date_to)})
+            </th>
+            <th colSpan={showFunnel ? 5 : 3} className="text-center text-xs font-semibold text-emerald-600 uppercase py-1 px-2 bg-emerald-50 rounded-tr">
+              After ({formatShortDate(snapshotAfter.date_from)} → {formatShortDate(snapshotAfter.date_to)})
+            </th>
+            <th className="text-right text-xs font-semibold text-gray-400 uppercase py-2 pl-3" rowSpan={2}>Δ CPL</th>
+          </tr>
+          <tr className="border-b border-gray-100">
+            {/* Before sub-headers */}
+            <th className="text-right text-xs font-semibold text-blue-400 py-1.5 px-2 bg-blue-50">Spend</th>
+            <th className="text-right text-xs font-semibold text-blue-400 py-1.5 px-2 bg-blue-50">Leads</th>
+            <th className="text-right text-xs font-semibold text-blue-400 py-1.5 px-2 bg-blue-50">CPL</th>
+            {showFunnel && <>
+              <th className="text-right text-xs font-semibold text-blue-300 py-1.5 px-2 bg-blue-50">BR%</th>
+              <th className="text-right text-xs font-semibold text-blue-300 py-1.5 px-2 bg-blue-50">Mtg%</th>
+            </>}
+            {/* After sub-headers */}
+            <th className="text-right text-xs font-semibold text-emerald-500 py-1.5 px-2 bg-emerald-50">Spend</th>
+            <th className="text-right text-xs font-semibold text-emerald-500 py-1.5 px-2 bg-emerald-50">Leads</th>
+            <th className="text-right text-xs font-semibold text-emerald-500 py-1.5 px-2 bg-emerald-50">CPL</th>
+            {showFunnel && <>
+              <th className="text-right text-xs font-semibold text-emerald-300 py-1.5 px-2 bg-emerald-50">BR%</th>
+              <th className="text-right text-xs font-semibold text-emerald-300 py-1.5 px-2 bg-emerald-50">Mtg%</th>
+            </>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => {
+            const b = row.before
+            const a = row.after
+            return (
+              <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
+                <td className="py-2 pr-3 text-gray-800 font-medium max-w-[160px] truncate" title={row.name}>
+                  {row.name}
+                </td>
+                {/* Before */}
+                <td className="py-2 px-2 text-right text-gray-600 bg-blue-50/30">{b ? fmt(b.spend) : '—'}</td>
+                <td className="py-2 px-2 text-right text-gray-600 bg-blue-50/30">{b ? b.leads : '—'}</td>
+                <td className="py-2 px-2 text-right font-semibold text-blue-700 bg-blue-50/30">{b?.cpl != null ? `€${b.cpl.toFixed(2)}` : '—'}</td>
+                {showFunnel && <>
+                  <td className="py-2 px-2 text-right text-indigo-500 bg-blue-50/30">{b?.booking_rate != null ? `${b.booking_rate}%` : '—'}</td>
+                  <td className="py-2 px-2 text-right text-indigo-500 bg-blue-50/30">{b?.meeting_done_pct != null ? `${b.meeting_done_pct}%` : '—'}</td>
+                </>}
+                {/* After */}
+                <td className="py-2 px-2 text-right text-gray-600 bg-emerald-50/30">{a ? fmt(a.spend) : '—'}</td>
+                <td className="py-2 px-2 text-right text-gray-600 bg-emerald-50/30">{a ? a.leads : '—'}</td>
+                <td className="py-2 px-2 text-right font-semibold text-emerald-700 bg-emerald-50/30">{a?.cpl != null ? `€${a.cpl.toFixed(2)}` : '—'}</td>
+                {showFunnel && <>
+                  <td className="py-2 px-2 text-right text-emerald-500 bg-emerald-50/30">{a?.booking_rate != null ? `${a.booking_rate}%` : '—'}</td>
+                  <td className="py-2 px-2 text-right text-emerald-500 bg-emerald-50/30">{a?.meeting_done_pct != null ? `${a.meeting_done_pct}%` : '—'}</td>
+                </>}
+                {/* Delta */}
+                <td className="py-2 pl-3 text-right">
+                  <CplDelta before={b?.cpl ?? null} after={a?.cpl ?? null} />
+                </td>
+              </tr>
+            )
+          })}
+
+          {/* Totals row */}
+          <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold">
+            <td className="py-2 pr-3 text-gray-700">Total</td>
+            {/* Before totals */}
+            <td className="py-2 px-2 text-right text-gray-900 bg-blue-50/30">{fmt(snapshot.totals.spend)}</td>
+            <td className="py-2 px-2 text-right text-gray-900 bg-blue-50/30">{snapshot.totals.leads}</td>
+            <td className="py-2 px-2 text-right text-blue-800 bg-blue-50/30">
+              {snapshot.totals.cpl != null ? `€${snapshot.totals.cpl.toFixed(2)}` : '—'}
+            </td>
+            {showFunnel && <>
+              <td className="py-2 px-2 text-right text-indigo-600 bg-blue-50/30">{snapshot.totals.booking_rate != null ? `${snapshot.totals.booking_rate}%` : '—'}</td>
+              <td className="py-2 px-2 text-right text-indigo-600 bg-blue-50/30">{snapshot.totals.meeting_done_pct != null ? `${snapshot.totals.meeting_done_pct}%` : '—'}</td>
+            </>}
+            {/* After totals */}
+            <td className="py-2 px-2 text-right text-gray-900 bg-emerald-50/30">{fmt(snapshotAfter.totals.spend)}</td>
+            <td className="py-2 px-2 text-right text-gray-900 bg-emerald-50/30">{snapshotAfter.totals.leads}</td>
+            <td className="py-2 px-2 text-right text-emerald-800 bg-emerald-50/30">
+              {snapshotAfter.totals.cpl != null ? `€${snapshotAfter.totals.cpl.toFixed(2)}` : '—'}
+            </td>
+            {showFunnel && <>
+              <td className="py-2 px-2 text-right text-emerald-600 bg-emerald-50/30">{snapshotAfter.totals.booking_rate != null ? `${snapshotAfter.totals.booking_rate}%` : '—'}</td>
+              <td className="py-2 px-2 text-right text-emerald-600 bg-emerald-50/30">{snapshotAfter.totals.meeting_done_pct != null ? `${snapshotAfter.totals.meeting_done_pct}%` : '—'}</td>
+            </>}
+            {/* Total delta */}
+            <td className="py-2 pl-3 text-right">
+              <CplDelta before={snapshot.totals.cpl} after={snapshotAfter.totals.cpl} />
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -97,6 +247,9 @@ export default function DecisionDetail() {
   const [snapshot, setSnapshot] = useState<SnapshotResult | null>(null)
   const [snapshotLoading, setSnapshotLoading] = useState(false)
   const [snapshotError, setSnapshotError] = useState<string | null>(null)
+  const [snapshotAfter, setSnapshotAfter] = useState<SnapshotResult | null>(null)
+  const [snapshotAfterLoading, setSnapshotAfterLoading] = useState(false)
+  const [snapshotAfterError, setSnapshotAfterError] = useState<string | null>(null)
   const [showFunnel, setShowFunnel] = useState(false)
 
   const [reviewForm, setReviewForm] = useState<ReviewForm>({
@@ -174,21 +327,33 @@ export default function DecisionDetail() {
 
   async function fetchCPL(d: Decision) {
     if (d.platform !== 'Meta' && d.platform !== 'Google') return
-    const base = `date=${d.date}&platform=${d.platform}&country=${d.country}&window=7`
-    // Aggregate before/after
+    const base = `platform=${d.platform}&country=${d.country}`
+
+    // Aggregate before/after CPL
     setCplLoading(true); setCplError(null)
-    fetch(`/api/metrics?${base}`)
+    fetch(`/api/metrics?date=${d.date}&${base}&window=7`)
       .then(r => r.ok ? r.json() : Promise.reject('CPL fetch failed'))
       .then((data: CPLResult) => setCpl(data))
       .catch(err => setCplError(err instanceof Error ? err.message : 'Failed to load CPL'))
       .finally(() => setCplLoading(false))
-    // Campaign snapshot (7 days before)
+
+    // Campaign snapshot — 7 days BEFORE
     setSnapshotLoading(true); setSnapshotError(null)
-    fetch(`/api/metrics/snapshot?${base}`)
+    fetch(`/api/metrics/snapshot?date=${d.date}&${base}&window=7`)
       .then(r => r.ok ? r.json() : Promise.reject('Snapshot fetch failed'))
       .then((data: SnapshotResult) => setSnapshot(data))
-      .catch(err => setSnapshotError(err instanceof Error ? err.message : 'Failed to load snapshot'))
+      .catch(err => setSnapshotError(err instanceof Error ? err.message : 'Failed to load before snapshot'))
       .finally(() => setSnapshotLoading(false))
+
+    // Campaign snapshot — 7 days AFTER
+    const afterFrom = d.date
+    const afterTo   = addDaysClient(d.date, 7)
+    setSnapshotAfterLoading(true); setSnapshotAfterError(null)
+    fetch(`/api/metrics/snapshot?date_from=${afterFrom}&date_to=${afterTo}&${base}`)
+      .then(r => r.ok ? r.json() : Promise.reject('After snapshot fetch failed'))
+      .then((data: SnapshotResult) => setSnapshotAfter(data))
+      .catch(err => setSnapshotAfterError(err instanceof Error ? err.message : 'Failed to load after snapshot'))
+      .finally(() => setSnapshotAfterLoading(false))
   }
 
   async function handleSaveEdit() {
@@ -300,9 +465,11 @@ export default function DecisionDetail() {
 
   const isPendingReview = decision.status === 'Pending Review'
   const isReviewed = decision.status === 'Reviewed'
+  const hasMetrics = decision.platform === 'Meta' || decision.platform === 'Google'
+  const bothSnapshotsReady = snapshot && snapshotAfter && !snapshotLoading && !snapshotAfterLoading
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       {/* Back + Status + Edit */}
       <div className="flex items-center justify-between">
         <Link href="/" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
@@ -447,44 +614,48 @@ export default function DecisionDetail() {
         </div>
       )}
 
-      {/* Campaign Snapshot — 7 days before decision */}
-      {(decision.platform === 'Meta' || decision.platform === 'Google') && (
+      {/* Before / After Campaign Comparison */}
+      {hasMetrics && (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-              Campaign Snapshot
+              Before / After Comparison
             </h2>
             <div className="flex items-center gap-3">
-              {snapshot && (
+              {bothSnapshotsReady && (
                 <button
                   onClick={() => setShowFunnel(v => !v)}
                   className={`px-3 py-1 rounded text-xs font-medium border transition ${showFunnel ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
                 >
-                  {showFunnel ? '▾ Hide funnel' : '▸ BR / Meeting Done'}
+                  {showFunnel ? '▾ Hide funnel' : '▸ BR / Mtg Done'}
                 </button>
               )}
               <span className="text-xs text-gray-400">
-                7 days before · {decision.platform} · {decision.country}
+                ±7 days · {decision.platform} · {decision.country}
               </span>
             </div>
           </div>
 
-          {snapshotLoading && (
+          {/* Loading states */}
+          {(snapshotLoading || snapshotAfterLoading) && (
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
               Fetching from Edusogno DB…
             </div>
           )}
-          {snapshotError && <p className="text-sm text-red-600">{snapshotError}</p>}
 
-          {snapshot && !snapshotLoading && (
+          {snapshotError && <p className="text-sm text-red-600 mb-2">Before: {snapshotError}</p>}
+          {snapshotAfterError && <p className="text-sm text-red-600 mb-2">After: {snapshotAfterError}</p>}
+
+          {/* Only "before" available (after still loading or errored) */}
+          {snapshot && !snapshotLoading && !snapshotAfter && !snapshotAfterLoading && (
             <div className="space-y-3">
               {!snapshot.data_mature && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                   <p className="text-xs text-amber-700">⚠️ Data from less than 14 days ago — may not be fully mature.</p>
                 </div>
               )}
-
+              <p className="text-xs text-gray-400">Before data loaded. After period not yet available.</p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -493,60 +664,43 @@ export default function DecisionDetail() {
                       <th className="text-right text-xs font-semibold text-gray-400 uppercase py-2 px-3">Spend</th>
                       <th className="text-right text-xs font-semibold text-gray-400 uppercase py-2 px-3">Leads</th>
                       <th className="text-right text-xs font-semibold text-gray-400 uppercase py-2 px-3">CPL</th>
-                      {showFunnel && <>
-                        <th className="text-right text-xs font-semibold text-indigo-400 uppercase py-2 px-3">BR%</th>
-                        <th className="text-right text-xs font-semibold text-indigo-400 uppercase py-2 pl-3">Mtg Done%</th>
-                      </>}
                     </tr>
                   </thead>
                   <tbody>
                     {snapshot.campaigns.map((c, i) => (
                       <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
-                        <td className="py-2 pr-4 text-gray-800 font-medium max-w-[200px] truncate" title={c.name}>
-                          {c.name}
-                        </td>
-                        <td className="py-2 px-3 text-right text-gray-700">
-                          €{c.spend.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
-                        </td>
+                        <td className="py-2 pr-4 text-gray-800 font-medium max-w-[200px] truncate" title={c.name}>{c.name}</td>
+                        <td className="py-2 px-3 text-right text-gray-700">€{c.spend.toLocaleString('it-IT', { maximumFractionDigits: 0 })}</td>
                         <td className="py-2 px-3 text-right text-gray-700">{c.leads}</td>
-                        <td className="py-2 px-3 text-right font-semibold text-blue-700">
-                          {c.cpl !== null ? `€${c.cpl.toFixed(2)}` : '—'}
-                        </td>
-                        {showFunnel && <>
-                          <td className="py-2 px-3 text-right text-indigo-600 font-medium">
-                            {c.booking_rate !== null ? `${c.booking_rate}%` : '—'}
-                          </td>
-                          <td className="py-2 pl-3 text-right text-indigo-600 font-medium">
-                            {c.meeting_done_pct !== null ? `${c.meeting_done_pct}%` : '—'}
-                          </td>
-                        </>}
+                        <td className="py-2 px-3 text-right font-semibold text-blue-700">{c.cpl !== null ? `€${c.cpl.toFixed(2)}` : '—'}</td>
                       </tr>
                     ))}
                     <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold">
                       <td className="py-2 pr-4 text-gray-700">Total</td>
-                      <td className="py-2 px-3 text-right text-gray-900">
-                        €{snapshot.totals.spend.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
-                      </td>
+                      <td className="py-2 px-3 text-right text-gray-900">€{snapshot.totals.spend.toLocaleString('it-IT', { maximumFractionDigits: 0 })}</td>
                       <td className="py-2 px-3 text-right text-gray-900">{snapshot.totals.leads}</td>
-                      <td className="py-2 px-3 text-right text-blue-800">
-                        {snapshot.totals.cpl !== null ? `€${snapshot.totals.cpl.toFixed(2)}` : '—'}
-                      </td>
-                      {showFunnel && <>
-                        <td className="py-2 px-3 text-right text-indigo-700">
-                          {snapshot.totals.booking_rate !== null ? `${snapshot.totals.booking_rate}%` : '—'}
-                        </td>
-                        <td className="py-2 pl-3 text-right text-indigo-700">
-                          {snapshot.totals.meeting_done_pct !== null ? `${snapshot.totals.meeting_done_pct}%` : '—'}
-                        </td>
-                      </>}
+                      <td className="py-2 px-3 text-right text-blue-800">{snapshot.totals.cpl !== null ? `€${snapshot.totals.cpl.toFixed(2)}` : '—'}</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
+              <p className="text-xs text-gray-400">{snapshot.date_from} → {snapshot.date_to}</p>
+            </div>
+          )}
 
-              <p className="text-xs text-gray-400">
-                {snapshot.date_from} → {snapshot.date_to} · {decision.platform} · {decision.country}
-              </p>
+          {/* Full before+after comparison table */}
+          {bothSnapshotsReady && (
+            <div className="space-y-3">
+              {(!snapshot.data_mature || !snapshotAfter.data_mature) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <p className="text-xs text-amber-700">⚠️ Some data may not be fully mature (less than 14 days old).</p>
+                </div>
+              )}
+              <ComparisonTable
+                snapshot={snapshot}
+                snapshotAfter={snapshotAfter}
+                showFunnel={showFunnel}
+              />
             </div>
           )}
         </div>
