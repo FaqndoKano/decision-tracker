@@ -28,7 +28,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-full flex flex-col text-gray-900" style={{ background: 'var(--surface)' }}>
 
         {/* ── Top Nav ── */}
-        <header style={{ background: '#202020' }} className="sticky top-0 z-10 shadow-md">
+        <header style={{ background: '#E0C0E0', borderBottom: '1px solid #D0B0D0' }} className="sticky top-0 z-10">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
 
             {/* Logo */}
@@ -36,9 +36,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Image
                 src="/logo.png"
                 alt="Edusogno"
-                height={32}
-                width={130}
-                style={{ objectFit: 'contain', filter: 'invert(1)' }}
+                height={30}
+                width={120}
+                style={{ objectFit: 'contain' }}
                 priority
               />
             </Link>
@@ -50,13 +50,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                   key={href}
                   href={href}
                   className="hidden md:block px-3 py-1.5 rounded-md text-sm font-medium transition"
-                  style={{ color: '#B0B0B0' }}
+                  style={{ color: '#A080A0' }}
                   onMouseEnter={e => {
                     (e.currentTarget as HTMLAnchorElement).style.color = '#E080C0'
-                    ;(e.currentTarget as HTMLAnchorElement).style.background = '#2E2E2E'
+                    ;(e.currentTarget as HTMLAnchorElement).style.background = '#D8B0D8'
                   }}
                   onMouseLeave={e => {
-                    (e.currentTarget as HTMLAnchorElement).style.color = '#B0B0B0'
+                    (e.currentTarget as HTMLAnchorElement).style.color = '#A080A0'
                     ;(e.currentTarget as HTMLAnchorElement).style.background = 'transparent'
                   }}
                 >
@@ -67,9 +67,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Link
                 href="/new"
                 className="ml-2 px-3 py-1.5 rounded-md text-sm font-semibold transition"
-                style={{ background: '#E080C0', color: '#202020' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#C060A0'; (e.currentTarget as HTMLAnchorElement).style.color = '#fff' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#E080C0'; (e.currentTarget as HTMLAnchorElement).style.color = '#202020' }}
+                style={{ background: '#E080C0', color: '#F8F0F8' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#D070B0' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#E080C0' }}
               >
                 + New
               </Link>

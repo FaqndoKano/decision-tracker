@@ -1,48 +1,87 @@
 @import "tailwindcss";
 
-/* ─── Brand palette ─────────────────────────────────────────── */
+/* ─── Pastel-only palette ─────────────────────────────────── */
 :root {
-  --brand:         #E080C0;
-  --brand-soft:    #E0A0C0;
-  --brand-hover:   #C060A0;
-  --surface:       #E0E0E0;
-  --ink:           #202020;
-  --ink-mid:       #404040;
-  --ink-secondary: #606060;
-  --ink-tertiary:  #808080;
-  --cyan-soft:     #C0E0E0;
-  --lavender:      #E0C0E0;
+  --brand:      #E080C0;   /* pastel pink  — primary accent   */
+  --brand-soft: #E0A0C0;   /* softer pink  — hover / muted    */
+  --cyan:       #C0E0E0;   /* pastel cyan  — secondary        */
+  --lavender:   #E0C0E0;   /* pastel lavender                 */
+  --surface:    #E0E0E0;   /* page background                 */
+  --card:       #F0E8F0;   /* card background (lavender tint) */
+  --text:       #808080;   /* body text — darkest allowed     */
+  --text-soft:  #A0A0A0;   /* secondary text                  */
+  --border:     #D0C0D0;   /* borders                         */
 }
 
-/* Override Tailwind blue → brand pink so every blue-* class becomes pink */
 @theme inline {
   --color-background: var(--surface);
-  --color-foreground: var(--ink);
+  --color-foreground: var(--text);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* blue overrides → pink */
-  --color-blue-300: #E0C0D8;
-  --color-blue-400: var(--brand-soft);
-  --color-blue-500: var(--brand);
-  --color-blue-600: var(--brand);
-  --color-blue-700: var(--brand-hover);
-  --color-blue-800: #A04080;
+  /* blue → brand pink */
+  --color-blue-100: #F0D8EC;
+  --color-blue-200: #EAC8E4;
+  --color-blue-300: #E0B0D4;
+  --color-blue-400: #E0A0C0;
+  --color-blue-500: #E080C0;
+  --color-blue-600: #E080C0;
+  --color-blue-700: #D070B0;
+  --color-blue-800: #C060A0;
 
-  /* gray scale aligned to palette */
-  --color-gray-50:  #ECECEC;
-  --color-gray-100: #E0E0E0;
-  --color-gray-200: #D0D0D0;
-  --color-gray-300: #B8B8B8;
-  --color-gray-400: var(--ink-tertiary);
-  --color-gray-500: var(--ink-secondary);
-  --color-gray-600: var(--ink-secondary);
-  --color-gray-700: var(--ink-mid);
-  --color-gray-800: var(--ink-mid);
-  --color-gray-900: var(--ink);
+  /* indigo → lavender */
+  --color-indigo-400: #D0B0D8;
+  --color-indigo-500: #C8A0D0;
+  --color-indigo-600: #C090C8;
+  --color-indigo-700: #B080C0;
+
+  /* green → cyan pastel */
+  --color-green-100: #D8F0F0;
+  --color-green-600: #80C0C0;
+  --color-green-700: #70B0B0;
+  --color-green-800: #609090;
+
+  /* gray → pastel tones (no darks) */
+  --color-gray-50:  #F0ECF0;
+  --color-gray-100: #E8E0E8;
+  --color-gray-200: #DCD0DC;
+  --color-gray-300: #C8B8C8;
+  --color-gray-400: #B0A0B0;
+  --color-gray-500: #A090A0;
+  --color-gray-600: #908090;
+  --color-gray-700: #908090;
+  --color-gray-800: #808080;
+  --color-gray-900: #808080;
+
+  /* red → soft rose */
+  --color-red-50:  #F8E8F0;
+  --color-red-100: #F0D4E4;
+  --color-red-200: #E8C0D8;
+  --color-red-500: #D090B0;
+  --color-red-600: #C880A8;
+  --color-red-700: #B870A0;
+  --color-red-800: #A86098;
+
+  /* amber → peach */
+  --color-amber-50:  #F8EEE4;
+  --color-amber-200: #F0D4B8;
+  --color-amber-700: #C8A080;
+
+  /* yellow → peach */
+  --color-yellow-100: #F8F0D8;
+  --color-yellow-600: #D0B070;
+  --color-yellow-800: #B89060;
+
+  /* purple → lavender */
+  --color-purple-50:  #F0E8F4;
+  --color-purple-200: #DEC8E8;
+  --color-purple-800: #A888C0;
 }
 
 body {
   background: var(--surface);
-  color: var(--ink);
+  color: var(--text);
 }
+
+/* Whites → pastel card bg */
+.bg-white { background: var(--card) !important; }
