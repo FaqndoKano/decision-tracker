@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Decision, Verdict, Status, Platform, Country, Category } from '@/types/decision'
-import type { CPLResult } from '@/lib/edusogno-db'
+import type { CPLResult, SnapshotResult } from '@/lib/edusogno-db'
 
 const VERDICTS: Verdict[] = ['Worked', 'Did Not Work', 'Neutral', 'No Data']
 const PLATFORMS: Platform[] = ['Meta', 'Google', 'Both']
@@ -94,6 +94,9 @@ export default function DecisionDetail() {
   const [cpl, setCpl] = useState<CPLResult | null>(null)
   const [cplLoading, setCplLoading] = useState(false)
   const [cplError, setCplError] = useState<string | null>(null)
+  const [snapshot, setSnapshot] = useState<SnapshotResult | null>(null)
+  const [snapshotLoading, setSnapshotLoading] = useState(false)
+  const [snapshotError, setSnapshotError] = useState<string | null>(null)
 
   const [reviewForm, setReviewForm] = useState<ReviewForm>({
     verdict: '',
@@ -169,20 +172,22 @@ export default function DecisionDetail() {
   }, [id])
 
   async function fetchCPL(d: Decision) {
-    if (d.platform === 'Both' || d.platform === 'Meta' || d.platform === 'Google') {
-      setCplLoading(true)
-      setCplError(null)
-      try {
-        const res = await fetch(`/api/metrics?date=${d.date}&platform=${d.platform}&window=7`)
-        if (!res.ok) throw new Error('Could not fetch CPL data')
-        const data: CPLResult = await res.json()
-        setCpl(data)
-      } catch (err) {
-        setCplError(err instanceof Error ? err.message : 'Failed to load CPL')
-      } finally {
-        setCplLoading(false)
-      }
-    }
+    if (d.platform !== 'Meta' && d.platform !== 'Google') return
+    const base = `date=${d.date}&platform=${d.platform}&country=${d.country}&window=7`
+    // Aggregate before/after
+    setCplLoading(true); setCplError(null)
+    fetch(`/api/metrics?${base}`)
+      .then(r => r.ok ? r.json() : Promise.reject('CPL fetch failed'))
+      .then((data: CPLResult) => setCpl(data))
+      .catch(err => setCplError(err instanceof Error ? err.message : 'Failed to load CPL'))
+      .finally(() => setCplLoading(false))
+    // Campaign snapshot (7 days before)
+    setSnapshotLoading(true); setSnapshotError(null)
+    fetch(`/api/metrics/snapshot?${base}`)
+      .then(r => r.ok ? r.json() : Promise.reject('Snapshot fetch failed'))
+      .then((data: SnapshotResult) => setSnapshot(data))
+      .catch(err => setSnapshotError(err instanceof Error ? err.message : 'Failed to load snapshot'))
+      .finally(() => setSnapshotLoading(false))
   }
 
   async function handleSaveEdit() {
@@ -441,118 +446,117 @@ export default function DecisionDetail() {
         </div>
       )}
 
-      {/* CPL Widget — live data from edus_academy */}
-      {(cplLoading || cpl || cplError) && (
+      {/* Campaign Snapshot — 7 days before decision */}
+      {(decision.platform === 'Meta' || decision.platform === 'Google') && (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-              CPL from Database
+              Campaign Snapshot
             </h2>
-            <span className="text-xs text-gray-400">±7 days around decision</span>
+            <span className="text-xs text-gray-400">
+              7 days before · {decision.platform} · {decision.country}
+            </span>
           </div>
 
-          {cplLoading && (
+          {snapshotLoading && (
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
               Fetching from Edusogno DB…
             </div>
           )}
+          {snapshotError && <p className="text-sm text-red-600">{snapshotError}</p>}
 
-          {cplError && (
-            <p className="text-sm text-red-600">{cplError}</p>
-          )}
-
-          {cpl && !cplLoading && (
-            <div className="space-y-4">
-              {/* Data maturity warning */}
-              {!cpl.data_mature && (
+          {snapshot && !snapshotLoading && (
+            <div className="space-y-3">
+              {!snapshot.data_mature && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  <p className="text-xs text-amber-700">
-                    ⚠️ The &quot;after&quot; window ended less than 14 days ago — data may not be fully mature yet.
-                  </p>
+                  <p className="text-xs text-amber-700">⚠️ Data from less than 14 days ago — may not be fully mature.</p>
                 </div>
               )}
 
-              {/* Before / After comparison */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Before */}
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                  <p className="text-xs font-semibold text-gray-400 uppercase mb-3">
-                    Before ({cpl.before.date_from} → {cpl.before.date_to})
-                  </p>
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-xs text-gray-400">Spend</p>
-                      <p className="text-lg font-bold text-gray-800">
-                        €{cpl.before.spend.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Leads</p>
-                      <p className="text-lg font-bold text-gray-800">{cpl.before.leads}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">CPL</p>
-                      <p className="text-xl font-bold text-blue-700">
-                        {cpl.before.cpl !== null ? `€${cpl.before.cpl.toFixed(2)}` : '—'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* After */}
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                  <p className="text-xs font-semibold text-gray-400 uppercase mb-3">
-                    After ({cpl.after.date_from} → {cpl.after.date_to})
-                  </p>
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-xs text-gray-400">Spend</p>
-                      <p className="text-lg font-bold text-gray-800">
-                        €{cpl.after.spend.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Leads</p>
-                      <p className="text-lg font-bold text-gray-800">{cpl.after.leads}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">CPL</p>
-                      {(() => {
-                        const before = cpl.before.cpl
-                        const after = cpl.after.cpl
-                        const delta = before !== null && after !== null ? after - before : null
-                        const pct = before !== null && before > 0 && after !== null
-                          ? ((after - before) / before * 100).toFixed(1)
-                          : null
-                        return (
-                          <div className="flex items-baseline gap-2">
-                            <p className={`text-xl font-bold ${
-                              delta === null ? 'text-gray-400' :
-                              delta < 0 ? 'text-green-600' :
-                              delta > 0 ? 'text-red-600' :
-                              'text-gray-700'
-                            }`}>
-                              {after !== null ? `€${after.toFixed(2)}` : '—'}
-                            </p>
-                            {pct !== null && (
-                              <span className={`text-xs font-semibold ${
-                                delta! < 0 ? 'text-green-600' : delta! > 0 ? 'text-red-600' : 'text-gray-500'
-                              }`}>
-                                {delta! < 0 ? '↓' : '↑'}{Math.abs(parseFloat(pct))}%
-                              </span>
-                            )}
-                          </div>
-                        )
-                      })()}
-                    </div>
-                  </div>
-                </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="text-left text-xs font-semibold text-gray-400 uppercase py-2 pr-4">Campaign</th>
+                      <th className="text-right text-xs font-semibold text-gray-400 uppercase py-2 px-3">Spend</th>
+                      <th className="text-right text-xs font-semibold text-gray-400 uppercase py-2 px-3">Leads</th>
+                      <th className="text-right text-xs font-semibold text-gray-400 uppercase py-2 pl-3">CPL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {snapshot.campaigns.map((c, i) => (
+                      <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="py-2 pr-4 text-gray-800 font-medium max-w-[220px] truncate" title={c.name}>
+                          {c.name}
+                        </td>
+                        <td className="py-2 px-3 text-right text-gray-700">
+                          €{c.spend.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </td>
+                        <td className="py-2 px-3 text-right text-gray-700">{c.leads}</td>
+                        <td className="py-2 pl-3 text-right font-semibold text-blue-700">
+                          {c.cpl !== null ? `€${c.cpl.toFixed(2)}` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                    {/* Totals row */}
+                    <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold">
+                      <td className="py-2 pr-4 text-gray-700">Total</td>
+                      <td className="py-2 px-3 text-right text-gray-900">
+                        €{snapshot.totals.spend.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </td>
+                      <td className="py-2 px-3 text-right text-gray-900">{snapshot.totals.leads}</td>
+                      <td className="py-2 pl-3 text-right text-blue-800">
+                        {snapshot.totals.cpl !== null ? `€${snapshot.totals.cpl.toFixed(2)}` : '—'}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
               <p className="text-xs text-gray-400">
-                Platform: {decision.platform} · Spend from <code className="bg-gray-100 px-1 rounded">advertising_cost</code> · Leads from <code className="bg-gray-100 px-1 rounded">crm</code> (verified, non-tutoring)
+                {snapshot.date_from} → {snapshot.date_to} · spend from <code className="bg-gray-100 px-1 rounded">advertising_cost</code> · leads from <code className="bg-gray-100 px-1 rounded">crm</code> (verified, utm_source filtered)
               </p>
+
+              {/* Before / After CPL summary */}
+              {cpl && (
+                <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
+                  {[
+                    { label: 'Before (total)', data: cpl.before },
+                    { label: 'After (total)', data: cpl.after },
+                  ].map(({ label, data }) => (
+                    <div key={label} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                      <p className="text-xs text-gray-400 mb-2">{label}</p>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Spend</span>
+                        <span className="font-medium">€{data.spend.toLocaleString('it-IT', { maximumFractionDigits: 0 })}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Leads</span>
+                        <span className="font-medium">{data.leads}</span>
+                      </div>
+                      <div className="flex justify-between text-sm mt-1">
+                        <span className="text-gray-500">CPL</span>
+                        <span className={`font-bold ${
+                          cpl.before.cpl && cpl.after.cpl
+                            ? cpl.after.cpl < cpl.before.cpl ? 'text-green-600' : cpl.after.cpl > cpl.before.cpl ? 'text-red-600' : 'text-gray-700'
+                            : 'text-blue-700'
+                        }`}>
+                          {data.cpl !== null ? `€${data.cpl.toFixed(2)}` : '—'}
+                          {label === 'After (total)' && cpl.before.cpl && data.cpl !== null && (
+                            <span className="text-xs ml-1">
+                              ({data.cpl < cpl.before.cpl ? '↓' : '↑'}{Math.abs(((data.cpl - cpl.before.cpl) / cpl.before.cpl) * 100).toFixed(1)}%)
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {cpl && !cpl.data_mature && (
+                <p className="text-xs text-amber-600">⚠️ After window &lt; 14 days — data may be incomplete.</p>
+              )}
             </div>
           )}
         </div>
