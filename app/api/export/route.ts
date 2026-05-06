@@ -4,7 +4,7 @@ import { Decision } from '@/types/decision'
 
 export async function GET(_request: NextRequest) {
   try {
-    const decisions = getAllDecisions()
+    const decisions = await getAllDecisions()
     const csv = convertToCSV(decisions)
 
     return new NextResponse(csv, {

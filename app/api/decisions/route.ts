@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category')
     const status = searchParams.get('status')
 
-    let decisions = getAllDecisions()
+    let decisions = await getAllDecisions()
 
     if (platform) decisions = decisions.filter((d) => d.platform === platform)
     if (country) decisions = decisions.filter((d) => d.country === country)
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       updated_at: now,
     }
 
-    const created = createDecision(newDecision)
+    const created = await createDecision(newDecision)
 
     return NextResponse.json(created, { status: 201 })
   } catch (error) {

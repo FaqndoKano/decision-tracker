@@ -9,7 +9,7 @@ interface RouteParams {
 export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
-    const decision = getDecisionById(id)
+    const decision = await getDecisionById(id)
 
     if (!decision) {
       return NextResponse.json({ error: 'Decision not found' }, { status: 404 })
@@ -25,7 +25,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
-    const existing = getDecisionById(id)
+    const existing = await getDecisionById(id)
 
     if (!existing) {
       return NextResponse.json({ error: 'Decision not found' }, { status: 404 })
@@ -65,7 +65,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'No valid fields provided for update' }, { status: 400 })
     }
 
-    const updated = updateDecision(id, updates)
+    const updated = await updateDecision(id, updates)
 
     if (!updated) {
       return NextResponse.json({ error: 'Decision not found' }, { status: 404 })
