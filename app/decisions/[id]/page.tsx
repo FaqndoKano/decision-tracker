@@ -97,6 +97,7 @@ export default function DecisionDetail() {
   const [snapshot, setSnapshot] = useState<SnapshotResult | null>(null)
   const [snapshotLoading, setSnapshotLoading] = useState(false)
   const [snapshotError, setSnapshotError] = useState<string | null>(null)
+  const [showFunnel, setShowFunnel] = useState(false)
 
   const [reviewForm, setReviewForm] = useState<ReviewForm>({
     verdict: '',
@@ -453,9 +454,19 @@ export default function DecisionDetail() {
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
               Campaign Snapshot
             </h2>
-            <span className="text-xs text-gray-400">
-              7 days before · {decision.platform} · {decision.country}
-            </span>
+            <div className="flex items-center gap-3">
+              {snapshot && (
+                <button
+                  onClick={() => setShowFunnel(v => !v)}
+                  className={`px-3 py-1 rounded text-xs font-medium border transition ${showFunnel ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                >
+                  {showFunnel ? '▾ Hide funnel' : '▸ BR / Meeting Done'}
+                </button>
+              )}
+              <span className="text-xs text-gray-400">
+                7 days before · {decision.platform} · {decision.country}
+              </span>
+            </div>
           </div>
 
           {snapshotLoading && (
@@ -481,82 +492,61 @@ export default function DecisionDetail() {
                       <th className="text-left text-xs font-semibold text-gray-400 uppercase py-2 pr-4">Campaign</th>
                       <th className="text-right text-xs font-semibold text-gray-400 uppercase py-2 px-3">Spend</th>
                       <th className="text-right text-xs font-semibold text-gray-400 uppercase py-2 px-3">Leads</th>
-                      <th className="text-right text-xs font-semibold text-gray-400 uppercase py-2 pl-3">CPL</th>
+                      <th className="text-right text-xs font-semibold text-gray-400 uppercase py-2 px-3">CPL</th>
+                      {showFunnel && <>
+                        <th className="text-right text-xs font-semibold text-indigo-400 uppercase py-2 px-3">BR%</th>
+                        <th className="text-right text-xs font-semibold text-indigo-400 uppercase py-2 pl-3">Mtg Done%</th>
+                      </>}
                     </tr>
                   </thead>
                   <tbody>
                     {snapshot.campaigns.map((c, i) => (
                       <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
-                        <td className="py-2 pr-4 text-gray-800 font-medium max-w-[220px] truncate" title={c.name}>
+                        <td className="py-2 pr-4 text-gray-800 font-medium max-w-[200px] truncate" title={c.name}>
                           {c.name}
                         </td>
                         <td className="py-2 px-3 text-right text-gray-700">
-                          €{c.spend.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          €{c.spend.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
                         </td>
                         <td className="py-2 px-3 text-right text-gray-700">{c.leads}</td>
-                        <td className="py-2 pl-3 text-right font-semibold text-blue-700">
+                        <td className="py-2 px-3 text-right font-semibold text-blue-700">
                           {c.cpl !== null ? `€${c.cpl.toFixed(2)}` : '—'}
                         </td>
+                        {showFunnel && <>
+                          <td className="py-2 px-3 text-right text-indigo-600 font-medium">
+                            {c.booking_rate !== null ? `${c.booking_rate}%` : '—'}
+                          </td>
+                          <td className="py-2 pl-3 text-right text-indigo-600 font-medium">
+                            {c.meeting_done_pct !== null ? `${c.meeting_done_pct}%` : '—'}
+                          </td>
+                        </>}
                       </tr>
                     ))}
-                    {/* Totals row */}
                     <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold">
                       <td className="py-2 pr-4 text-gray-700">Total</td>
                       <td className="py-2 px-3 text-right text-gray-900">
-                        €{snapshot.totals.spend.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        €{snapshot.totals.spend.toLocaleString('it-IT', { maximumFractionDigits: 0 })}
                       </td>
                       <td className="py-2 px-3 text-right text-gray-900">{snapshot.totals.leads}</td>
-                      <td className="py-2 pl-3 text-right text-blue-800">
+                      <td className="py-2 px-3 text-right text-blue-800">
                         {snapshot.totals.cpl !== null ? `€${snapshot.totals.cpl.toFixed(2)}` : '—'}
                       </td>
+                      {showFunnel && <>
+                        <td className="py-2 px-3 text-right text-indigo-700">
+                          {snapshot.totals.booking_rate !== null ? `${snapshot.totals.booking_rate}%` : '—'}
+                        </td>
+                        <td className="py-2 pl-3 text-right text-indigo-700">
+                          {snapshot.totals.meeting_done_pct !== null ? `${snapshot.totals.meeting_done_pct}%` : '—'}
+                        </td>
+                      </>}
                     </tr>
                   </tbody>
                 </table>
               </div>
 
               <p className="text-xs text-gray-400">
-                {snapshot.date_from} → {snapshot.date_to} · spend from <code className="bg-gray-100 px-1 rounded">advertising_cost</code> · leads from <code className="bg-gray-100 px-1 rounded">crm</code> (verified, utm_source filtered)
+                {snapshot.date_from} → {snapshot.date_to} · {decision.platform} · {decision.country}
               </p>
-
-              {/* Before / After CPL summary */}
-              {cpl && (
-                <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
-                  {[
-                    { label: 'Before (total)', data: cpl.before },
-                    { label: 'After (total)', data: cpl.after },
-                  ].map(({ label, data }) => (
-                    <div key={label} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                      <p className="text-xs text-gray-400 mb-2">{label}</p>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Spend</span>
-                        <span className="font-medium">€{data.spend.toLocaleString('it-IT', { maximumFractionDigits: 0 })}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Leads</span>
-                        <span className="font-medium">{data.leads}</span>
-                      </div>
-                      <div className="flex justify-between text-sm mt-1">
-                        <span className="text-gray-500">CPL</span>
-                        <span className={`font-bold ${
-                          cpl.before.cpl && cpl.after.cpl
-                            ? cpl.after.cpl < cpl.before.cpl ? 'text-green-600' : cpl.after.cpl > cpl.before.cpl ? 'text-red-600' : 'text-gray-700'
-                            : 'text-blue-700'
-                        }`}>
-                          {data.cpl !== null ? `€${data.cpl.toFixed(2)}` : '—'}
-                          {label === 'After (total)' && cpl.before.cpl && data.cpl !== null && (
-                            <span className="text-xs ml-1">
-                              ({data.cpl < cpl.before.cpl ? '↓' : '↑'}{Math.abs(((data.cpl - cpl.before.cpl) / cpl.before.cpl) * 100).toFixed(1)}%)
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {cpl && !cpl.data_mature && (
-                <p className="text-xs text-amber-600">⚠️ After window &lt; 14 days — data may be incomplete.</p>
-              )}
             </div>
           )}
         </div>

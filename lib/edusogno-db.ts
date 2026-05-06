@@ -39,11 +39,19 @@ export interface CampaignRow {
   spend: number
   leads: number
   cpl: number | null
+  mtg_scheduled: number
+  mtg_done: number
+  booking_rate: number | null   // mtg_scheduled / leads %
+  meeting_done_pct: number | null // mtg_done / leads %
 }
 
 export interface SnapshotResult {
   campaigns: CampaignRow[]
-  totals: { spend: number; leads: number; cpl: number | null }
+  totals: {
+    spend: number; leads: number; cpl: number | null
+    mtg_scheduled: number; mtg_done: number
+    booking_rate: number | null; meeting_done_pct: number | null
+  }
   date_from: string
   date_to: string
   data_mature: boolean
@@ -130,7 +138,8 @@ async function getPeriodMetrics(
       AND tutoring = 0
       AND otp_verification_code_verified = 1
       AND created_at >= ? AND created_at < ?
-      AND utm_source IN (${utmPlaceholders})`
+      AND utm_source IN (${utmPlaceholders})
+      AND utm_campaign IS NOT NULL`
   if (crmLang) { leadSql += ` AND (${DETECTED_LANG_CASE}) = ?`; leadParams.push(crmLang) }
 
   const [leadRows] = await db.execute<mysql.RowDataPacket[]>(leadSql, leadParams)
@@ -195,12 +204,14 @@ export async function getCampaignSnapshot(
 
   const [spendRows] = await db.execute<mysql.RowDataPacket[]>(spendSql, spendParams)
 
-  // Leads by utm_campaign
+  // Leads + meetings by utm_campaign
   const leadParams: (string | number | null)[] = [dateFrom, dateTo, ...utmSources]
   let leadSql = `
     SELECT
       TRIM(SUBSTRING_INDEX(utm_campaign, ' || Paid', 1)) AS campaign_name,
-      COUNT(*) AS leads
+      COUNT(*) AS leads,
+      SUM(CASE WHEN meeting IS NOT NULL THEN 1 ELSE 0 END) AS mtg_scheduled,
+      SUM(CASE WHEN meeting LIKE '%"interviewer"%' THEN 1 ELSE 0 END) AS mtg_done
     FROM crm
     WHERE deleted_at IS NULL
       AND tutoring = 0
@@ -213,23 +224,37 @@ export async function getCampaignSnapshot(
 
   const [leadRows] = await db.execute<mysql.RowDataPacket[]>(leadSql, leadParams)
 
-  // Merge: spend rows are the "master" list (every active campaign has spend)
-  const leadMap = new Map<string, number>()
+  // Merge: spend rows are the "master" list
+  type LeadData = { leads: number; mtg_scheduled: number; mtg_done: number }
+  const leadMap = new Map<string, LeadData>()
   for (const row of leadRows) {
-    leadMap.set(row.campaign_name as string, Number(row.leads))
+    leadMap.set(row.campaign_name as string, {
+      leads: Number(row.leads),
+      mtg_scheduled: Number(row.mtg_scheduled),
+      mtg_done: Number(row.mtg_done),
+    })
   }
 
   const campaigns: CampaignRow[] = spendRows.map((row) => {
-    const name   = row.campaign_name as string
-    const spend  = Number(row.spend ?? 0)
-    const leads  = leadMap.get(name) ?? 0
-    const cpl    = leads > 0 ? Math.round((spend / leads) * 100) / 100 : null
-    return { name, spend, leads, cpl }
+    const name  = row.campaign_name as string
+    const spend = Number(row.spend ?? 0)
+    const ld    = leadMap.get(name) ?? { leads: 0, mtg_scheduled: 0, mtg_done: 0 }
+    const { leads, mtg_scheduled, mtg_done } = ld
+    return {
+      name, spend, leads,
+      cpl:              leads > 0 ? Math.round((spend / leads) * 100) / 100 : null,
+      mtg_scheduled,
+      mtg_done,
+      booking_rate:     leads > 0 ? Math.round((mtg_scheduled / leads) * 1000) / 10 : null,
+      meeting_done_pct: leads > 0 ? Math.round((mtg_done / leads) * 1000) / 10 : null,
+    }
   })
 
-  const totalSpend  = campaigns.reduce((s, c) => s + c.spend, 0)
-  const totalLeads  = campaigns.reduce((s, c) => s + c.leads, 0)
-  const totalCpl    = totalLeads > 0 ? Math.round((totalSpend / totalLeads) * 100) / 100 : null
+  const totalSpend        = campaigns.reduce((s, c) => s + c.spend, 0)
+  const totalLeads        = campaigns.reduce((s, c) => s + c.leads, 0)
+  const totalMtgScheduled = campaigns.reduce((s, c) => s + c.mtg_scheduled, 0)
+  const totalMtgDone      = campaigns.reduce((s, c) => s + c.mtg_done, 0)
+  const totalCpl          = totalLeads > 0 ? Math.round((totalSpend / totalLeads) * 100) / 100 : null
 
   const today = new Date().toISOString().split('T')[0]
   const data_mature = Math.floor(
@@ -238,7 +263,12 @@ export async function getCampaignSnapshot(
 
   return {
     campaigns,
-    totals: { spend: totalSpend, leads: totalLeads, cpl: totalCpl },
+    totals: {
+      spend: totalSpend, leads: totalLeads, cpl: totalCpl,
+      mtg_scheduled: totalMtgScheduled, mtg_done: totalMtgDone,
+      booking_rate:     totalLeads > 0 ? Math.round((totalMtgScheduled / totalLeads) * 1000) / 10 : null,
+      meeting_done_pct: totalLeads > 0 ? Math.round((totalMtgDone / totalLeads) * 1000) / 10 : null,
+    },
     date_from: dateFrom,
     date_to: dateTo,
     data_mature,
