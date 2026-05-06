@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Decision, Verdict, Status } from '@/types/decision'
+import type { CPLResult } from '@/lib/edusogno-db'
 
 const VERDICTS: Verdict[] = ['Worked', 'Did Not Work', 'Neutral', 'No Data']
 
@@ -65,6 +66,9 @@ export default function DecisionDetail() {
   const [reviewError, setReviewError] = useState<string | null>(null)
   const [authenticated, setAuthenticated] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [cpl, setCpl] = useState<CPLResult | null>(null)
+  const [cplLoading, setCplLoading] = useState(false)
+  const [cplError, setCplError] = useState<string | null>(null)
 
   const [reviewForm, setReviewForm] = useState<ReviewForm>({
     verdict: '',
@@ -109,6 +113,7 @@ export default function DecisionDetail() {
         }
         const data: Decision = await res.json()
         setDecision(data)
+        fetchCPL(data)
         setReviewForm({
           verdict: data.verdict ?? '',
           result: data.result ?? '',
@@ -124,6 +129,23 @@ export default function DecisionDetail() {
     }
     load()
   }, [id])
+
+  async function fetchCPL(d: Decision) {
+    if (d.platform === 'Both' || d.platform === 'Meta' || d.platform === 'Google') {
+      setCplLoading(true)
+      setCplError(null)
+      try {
+        const res = await fetch(`/api/metrics?date=${d.date}&platform=${d.platform}&window=7`)
+        if (!res.ok) throw new Error('Could not fetch CPL data')
+        const data: CPLResult = await res.json()
+        setCpl(data)
+      } catch (err) {
+        setCplError(err instanceof Error ? err.message : 'Failed to load CPL')
+      } finally {
+        setCplLoading(false)
+      }
+    }
+  }
 
   function handleReviewChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -241,6 +263,123 @@ export default function DecisionDetail() {
           )}
         </div>
       </div>
+
+      {/* CPL Widget — live data from edus_academy */}
+      {(cplLoading || cpl || cplError) && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              CPL from Database
+            </h2>
+            <span className="text-xs text-gray-400">±7 days around decision</span>
+          </div>
+
+          {cplLoading && (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+              Fetching from Edusogno DB…
+            </div>
+          )}
+
+          {cplError && (
+            <p className="text-sm text-red-600">{cplError}</p>
+          )}
+
+          {cpl && !cplLoading && (
+            <div className="space-y-4">
+              {/* Data maturity warning */}
+              {!cpl.data_mature && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <p className="text-xs text-amber-700">
+                    ⚠️ The &quot;after&quot; window ended less than 14 days ago — data may not be fully mature yet.
+                  </p>
+                </div>
+              )}
+
+              {/* Before / After comparison */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Before */}
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                  <p className="text-xs font-semibold text-gray-400 uppercase mb-3">
+                    Before ({cpl.before.date_from} → {cpl.before.date_to})
+                  </p>
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-xs text-gray-400">Spend</p>
+                      <p className="text-lg font-bold text-gray-800">
+                        €{cpl.before.spend.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Leads</p>
+                      <p className="text-lg font-bold text-gray-800">{cpl.before.leads}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">CPL</p>
+                      <p className="text-xl font-bold text-blue-700">
+                        {cpl.before.cpl !== null ? `€${cpl.before.cpl.toFixed(2)}` : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* After */}
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                  <p className="text-xs font-semibold text-gray-400 uppercase mb-3">
+                    After ({cpl.after.date_from} → {cpl.after.date_to})
+                  </p>
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-xs text-gray-400">Spend</p>
+                      <p className="text-lg font-bold text-gray-800">
+                        €{cpl.after.spend.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Leads</p>
+                      <p className="text-lg font-bold text-gray-800">{cpl.after.leads}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">CPL</p>
+                      {(() => {
+                        const before = cpl.before.cpl
+                        const after = cpl.after.cpl
+                        const delta = before !== null && after !== null ? after - before : null
+                        const pct = before !== null && before > 0 && after !== null
+                          ? ((after - before) / before * 100).toFixed(1)
+                          : null
+                        return (
+                          <div className="flex items-baseline gap-2">
+                            <p className={`text-xl font-bold ${
+                              delta === null ? 'text-gray-400' :
+                              delta < 0 ? 'text-green-600' :
+                              delta > 0 ? 'text-red-600' :
+                              'text-gray-700'
+                            }`}>
+                              {after !== null ? `€${after.toFixed(2)}` : '—'}
+                            </p>
+                            {pct !== null && (
+                              <span className={`text-xs font-semibold ${
+                                delta! < 0 ? 'text-green-600' : delta! > 0 ? 'text-red-600' : 'text-gray-500'
+                              }`}>
+                                {delta! < 0 ? '↓' : '↑'}{Math.abs(parseFloat(pct))}%
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-400">
+                Platform: {decision.platform} · Spend from <code className="bg-gray-100 px-1 rounded">advertising_cost</code> · Leads from <code className="bg-gray-100 px-1 rounded">crm</code> (verified, non-tutoring)
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Review Section — editable if Pending Review */}
       {isPendingReview && (
