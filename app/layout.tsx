@@ -34,11 +34,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 shrink-0">
               <Image
-                src="/logo.png"
+                src="/logo.svg"
                 alt="Edusogno"
-                height={30}
-                width={120}
-                style={{ objectFit: 'contain' }}
+                height={36}
+                width={140}
+                style={{ objectFit: 'contain', color: '#A080A0' }}
                 priority
               />
             </Link>

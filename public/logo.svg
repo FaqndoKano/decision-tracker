@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 220" fill="currentColor">
+  <!-- Shield -->
+  <path d="M70 20 L170 20 L170 130 Q170 175 120 200 Q70 175 70 130 Z" fill="none" stroke="currentColor" stroke-width="10" stroke-linejoin="round"/>
+  <!-- Book 1 (tall vertical) -->
+  <rect x="112" y="60" width="18" height="70" rx="2"/>
+  <!-- Book 2 (tilted, leaning left) -->
+  <rect x="82" y="65" width="18" height="65" rx="2" transform="rotate(-18 91 97)"/>
+  <!-- Book 3 (right, slightly tilted) -->
+  <rect x="132" y="72" width="14" height="55" rx="2" transform="rotate(5 139 99)"/>
+
+  <!-- Text "Edu" -->
+  <text x="195" y="100" font-family="Georgia, 'Times New Roman', serif" font-weight="900" font-size="88" letter-spacing="-2">Edu</text>
+  <!-- Text "sogno" -->
+  <text x="195" y="190" font-family="Georgia, 'Times New Roman', serif" font-weight="900" font-size="88" letter-spacing="-2">sogno</text>
+</svg>
