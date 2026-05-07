@@ -34,7 +34,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 shrink-0">
               <Image
-                src="/logo.svg"
+                src="/logo.png"
                 alt="Edusogno"
                 height={36}
                 width={140}
