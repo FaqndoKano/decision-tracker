@@ -33,7 +33,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="Edusogno" style={{ height: 36, width: 'auto' }} />
+              <img src="/logo.png" alt="Edusogno" style={{ height: 36, width: 'auto', mixBlendMode: 'multiply' }} />
             </Link>
 
             {/* Nav links */}
