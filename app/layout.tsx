@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist } from 'next/font/google'
 import Link from 'next/link'
 import AuthButton from './components/AuthButton'
+import MobileNav from './components/MobileNav'
 import ReminderBanner from '@/app/components/ReminderBanner'
 import './globals.css'
 
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 + New
               </Link>
               <AuthButton />
+              <MobileNav />
             </nav>
           </div>
         </header>
