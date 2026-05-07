@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Geist } from 'next/font/google'
 import Link from 'next/link'
-import Image from 'next/image'
 import AuthButton from './components/AuthButton'
 import ReminderBanner from '@/app/components/ReminderBanner'
 import './globals.css'
@@ -33,14 +32,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 shrink-0">
-              <Image
-                src="/logo.png"
-                alt="Edusogno"
-                height={36}
-                width={140}
-                style={{ objectFit: 'contain', color: '#A080A0' }}
-                priority
-              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Edusogno" style={{ height: 36, width: 'auto' }} />
             </Link>
 
             {/* Nav links */}
