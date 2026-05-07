@@ -1,0 +1,23 @@
+{
+  "name": "Edusogno Decision Tracker",
+  "short_name": "Decisions",
+  "description": "Track and review paid media decisions",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#E0E0E0",
+  "theme_color": "#E0C0E0",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -10,6 +10,16 @@ const geist = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Edusogno · Decision Tracker',
   description: 'Track and review marketing decisions',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Decisions',
+  },
+  icons: {
+    icon: '/icon.svg',
+    apple: '/icon.svg',
+  },
 }
 
 const NAV = [

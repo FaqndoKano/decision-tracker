@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#E0C0E0"/>
+  <!-- Shield -->
+  <path d="M156 120 L356 120 L356 300 Q356 390 256 430 Q156 390 156 300 Z"
+        fill="none" stroke="#E080C0" stroke-width="22" stroke-linejoin="round"/>
+  <!-- Books -->
+  <rect x="238" y="175" width="36" height="130" rx="5" fill="#E080C0"/>
+  <rect x="178" y="185" width="32" height="118" rx="5" fill="#E0A0C0" transform="rotate(-16 194 244)"/>
+  <rect x="272" y="195" width="28" height="105" rx="5" fill="#C0E0E0" transform="rotate(8 286 247)"/>
+</svg>
