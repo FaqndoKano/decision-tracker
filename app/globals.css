@@ -85,3 +85,30 @@ body {
 
 /* Whites → pastel card bg */
 .bg-white { background: var(--card) !important; }
+
+/* ─── Nav ───────────────────────────────────────────────── */
+.nav-header {
+  background: #E0C0E0;
+  border-bottom: 1px solid #D0B0D0;
+}
+.nav-logo {
+  height: 36px;
+  width: auto;
+  mix-blend-mode: multiply;
+}
+.nav-link {
+  color: #A080A0;
+  transition: color .15s, background .15s;
+}
+.nav-link:hover {
+  color: #E080C0;
+  background: #D8B0D8;
+}
+.nav-cta {
+  background: #E080C0;
+  color: #F8F0F8;
+  transition: background .15s;
+}
+.nav-cta:hover {
+  background: #D070B0;
+}
