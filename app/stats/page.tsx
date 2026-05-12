@@ -53,9 +53,11 @@ function DecisionTimeline({ decisions, rangeDays }: { decisions: Decision[]; ran
 
   // SVG coordinate system
   const W  = 900
-  const H  = 160
-  const PX = 20  // horizontal padding
-  const midY = 80
+  const H  = 200
+  const PX = 20
+  const midY = 110
+  const R = 8
+  const STEP = R * 2 + 5  // 21px between centres — no overlap
 
   const dateToX = (dateStr: string) => {
     const ms = new Date(dateStr).getTime() - startDate.getTime()
@@ -75,25 +77,26 @@ function DecisionTimeline({ decisions, rangeDays }: { decisions: Decision[]; ran
     cursor.setDate(cursor.getDate() + tickInterval)
   }
 
-  // Group decisions by date to offset dots that land on same day
-  const byDate = new Map<string, Decision[]>()
+  // Group by date+platform separately so Meta and Google never share a slot
+  const byDatePlatform = new Map<string, Decision[]>()
   for (const d of inRange) {
-    const key = d.date ?? ''
-    if (!byDate.has(key)) byDate.set(key, [])
-    byDate.get(key)!.push(d)
+    const key = `${d.date ?? ''}__${d.platform ?? ''}`
+    if (!byDatePlatform.has(key)) byDatePlatform.set(key, [])
+    byDatePlatform.get(key)!.push(d)
   }
 
-  // Build dot positions
   const dots: { d: Decision; cx: number; cy: number; color: string }[] = []
-  for (const [, group] of byDate) {
+  for (const [, group] of byDatePlatform) {
     const cx = dateToX(group[0].date!)
-    // If multiple decisions on same day, space them vertically
     group.forEach((dec, idx) => {
       const isMeta   = dec.platform === 'Meta'
       const isGoogle = dec.platform === 'Google'
-      // Meta above the line, Google below, Both at center
-      const baseY = isMeta ? midY - 24 : isGoogle ? midY + 24 : midY
-      const cy = baseY - (idx > 0 ? idx * 18 : 0)
+      // Meta stacks upward from axis; Google stacks downward
+      const cy = isMeta
+        ? midY - (R + 4) - idx * STEP
+        : isGoogle
+          ? midY + (R + 4) + idx * STEP
+          : midY
       const color = isMeta ? META_COLOR : isGoogle ? GOOGLE_COLOR : '#6b7280'
       dots.push({ d: dec, cx, cy, color })
     })
@@ -128,10 +131,8 @@ function DecisionTimeline({ decisions, rangeDays }: { decisions: Decision[]; ran
           strokeLinecap="round"
         />
 
-        {/* "Meta" label (above line) */}
         <text x={PX + 4} y={midY - 28} fontSize="9" fill={META_COLOR} fontWeight="600" opacity="0.7">META</text>
-        {/* "Google" label (below line) */}
-        <text x={PX + 4} y={midY + 36} fontSize="9" fill={GOOGLE_COLOR} fontWeight="600" opacity="0.7">GOOGLE</text>
+        <text x={PX + 4} y={midY + 40} fontSize="9" fill={GOOGLE_COLOR} fontWeight="600" opacity="0.7">GOOGLE</text>
 
         {/* Tick marks + labels */}
         {ticks.map((tick, i) => (
@@ -164,10 +165,10 @@ function DecisionTimeline({ decisions, rangeDays }: { decisions: Decision[]; ran
           >
             {/* Pulse ring on hover */}
             {hovered === d.id && (
-              <circle cx={cx} cy={cy} r="14" fill={color} opacity="0.15" />
+              <circle cx={cx} cy={cy} r={R + 6} fill={color} opacity="0.15" />
             )}
             <circle
-              cx={cx} cy={cy} r="8"
+              cx={cx} cy={cy} r={R}
               fill={color}
               opacity={hovered && hovered !== d.id ? 0.4 : 0.92}
               stroke="white"
